@@ -840,6 +840,131 @@ global x4 "age hukou education income ccp weight"
 
 
 
+*---------------------PSM:Self_Health---------------------------
+*1.最近邻匹配
+cap drop u
+gen u = runiform()
+sort u
+	
+	psmatch2 marriage $x1 $x2 , ///
+		out(selfh)  logit ate ///
+
+	psgraph
+
+	*balance assumption
+		pstest $x1 $x2, both graph  
+	
+	//敏感性检验
+	drop delta
+    gen delta = .
+      	replace delta = selfh - _selfh if _treated == 1
+      	replace delta = selfh - _selfh if _treated == 0
+      		
+     rbounds delta, gamma(1 (0.02) 2)
+
+
+*2.半径匹配  Radius matching	 		 			 
+
+	psmatch2 marriage $x1 $x2, ///
+		out(selfh)  logit ate ///
+		radius caliper(0.001) 
+
+	*balance assumption
+	// psgraph
+		pstest $x1 $x2, both  
+
+
+*3.核匹配  Kernel matching
+
+	psmatch2 marriage $x1 $x2, ///
+		out(selfh)  logit ate ///
+		kernel 
+
+	*balance assumption
+	psgraph
+		pstest $x1 $x2, both  
+
+
+
+
+*---------------------PSM:adl---------------------------
+*1.最近邻匹配
+
+	cap drop u
+    gen u = uniform()
+    sort u
+
+	psmatch2 marriage $x1 $x2, ///
+		out(adl) logit neighbor(1) ate 
+
+	*balance assumption
+	psgraph
+		pstest $x, both  
+
+*2.半径匹配  Radius matching	 		 			 
+
+	psmatch2 marriage $x1 $x2, ///
+		out(adl)  logit ate ///
+		radius caliper(0.001) 
+
+	*balance assumption
+	psgraph
+		pstest $x, both  
+
+
+*3.核匹配  Kernel matching
+
+	psmatch2 marriage $x1 $x2, ///
+		out(adl)  logit ate ///
+		kernel 
+
+	*balance assumption
+	psgraph
+		pstest $x, both  
+
+
+
+
+*---------------------PSM:Selfmh---------------------------
+*1.最近邻匹配
+
+	cap drop u
+    gen u = uniform()
+    sort u
+
+	psmatch2 marriage $x1 $x2, ///
+		out(selfmh) logit neighbor(1) ate 
+
+	*balance assumption
+	psgraph
+		pstest $x, both  
+
+*2.半径匹配  Radius matching	 		 			 
+
+	psmatch2 marriage $x1 $x2, ///
+		out(selfmh)  logit ate ///
+		radius caliper(0.001) 
+
+	*balance assumption
+	psgraph
+		pstest $x, both  
+
+
+*3.核匹配  Kernel matching
+
+	psmatch2 marriage $x1 $x2, ///
+		out(selfmh)  logit ate ///
+		kernel 
+
+	*balance assumption
+	psgraph
+		pstest $x, both  
+
+
+
+
+
+
 
 * 1.Greedy Matching：Nearest 1-1
 

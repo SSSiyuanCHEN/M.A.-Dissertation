@@ -1,0 +1,893 @@
+*- 毕业论文：数据清洗部分
+*- Data: CGSS2013
+//2018年12月底，各种深夜开夜车加班炼金的作品
+
+	capture clear all
+
+	capture log close
+
+	set more on
+
+cd /Users/chensiyuan/Desktop/硕士论文/论文数据
+	dir
+
+use cgss2013.dta
+	count
+
+
+* ----------------------------------------
+* Part 1: Treatment
+* ----------------------------------------
+
+*-marital status（single=0,live with husband/wife=1）
+	codebook a69
+		drop if a69 == -3
+	gen marriage = .
+		replace marriage = 0 if a69 == 2 | a69 == 3 | a69 == 4  //同居或已婚(有配偶)
+		replace marriage = 1 if a69 == 1   //未婚
+		replace marriage = 2 if a69 == 5 | a69 ==6 //分居或离婚
+		replace marriage = 3 if a69 == 7  //丧偶
+	label var marriage "marital status"
+	label define marriage 0 "0 同居或已婚" 1 "1 未婚" 2 "2 分居或离婚"  3 "3 丧偶"    
+	label values marriage marriage 
+tab marriage
+
+*-mate （有无生活伴侣，0=无伴侣，1=有伴侣）
+	gen mate = .
+		replace mate = 0 if marriage != 0
+		replace mate = 1 if marriage == 0
+tab mate
+
+
+* ----------------------------------------
+* Part 2: Covariables
+* ----------------------------------------
+
+//1.年龄
+	codebook a3a
+		drop if a3a == -3
+	gen birth = a3a
+	gen age = 2013 - birth
+		label var age "how old"
+sum age 
+
+
+//2.性别(female=0)
+	codebook a2
+	recode a2 (2 = 0), gen(gender)
+		label var gender "gender: female as reference."
+		label define gender 0 "0 female"  1 "1 male"
+		label values gender gender
+tab gender
+
+
+//3.户口(rural=0)
+	codebook a18
+		drop if a18 == 6 | a18 == 7 | a18 == 8
+	recode a18 (1 = 0), gen(hukou)
+		replace hukou = 1 if hukou >= 2
+	label var hukou "hukou: rural as reference."
+	label define hukou 0 "0 rural"  1 "1 not rural"
+	label values hukou hukou
+tab hukou
+
+
+//4.education( 文盲 = 0）
+	codebook a7a
+		tab a7a, m nol	
+		tab a7a
+			drop if a7a == -3 | a7a == 2 | a7a == 14
+
+	gen education = .
+		replace education = 0 if a7a == 1 	//文盲
+		replace education = 1 if a7a == 3	//小学
+		replace education = 2 if a7a == 4	//初中 
+		replace education = 3 if a7a == 5  | a7a == 6  | a7a == 7 | a7a == 8 //高中
+		replace education = 4 if a7a == 9  | a7a == 10 | a7a == 11 | a7a == 12 | a7a == 13 //高等教育
+	label var education "education level"
+	label define education 0 "0 文盲" 1 "1 小学" 2 "2 初中"  3 "3 高中"  4 "4 大学及以上"     
+	label values education education education education education education
+tab education
+
+
+//5.income
+	codebook a8a
+		drop if a8a >= 9999997
+	gen income = ln(a8a + 1)
+sum income
+
+
+//6.民族 (汉族=0)
+	codebook a4
+		drop if a4 == -3
+	gen nation = . 
+		replace nation = 0 if a4 == 1
+		replace nation = 1 if a4 >= 2
+	label var nation "nation"
+	label define nation 0 "0 汉族" 1 "1 少数民族"    
+	label values nation nation
+tab nation
+
+
+//7.政治面貌 (非党员=0)
+	codebook a10
+		drop if a10 == -3 | a10 == -2
+	gen ccp = 1 if a10 == 1 
+		replace ccp = 0 if a10 != 1
+	label var ccp "ccp?"
+	label define ccp 0 "0 not ccp" 1 "1 ccp"    
+	label values ccp ccp
+tab ccp
+
+
+
+
+* ----------------------------------------
+* Part 3: Health status & Well-being
+* ----------------------------------------
+
+//1.自评健康
+	codebook a15
+		drop if a15 == -3
+	gen selfh = a15
+		label var selfh "self-rate health, number bigger more health"
+tab selfh
+
+
+//2.ADL
+	codebook a16
+		drop if a16 == -3 | a16 == -2
+	gen adl = a16	
+		label var adl "adl, number bigger more health"
+tab adl
+
+
+//3.自评精神健康
+	codebook a17
+		drop if a17 == -3 | a17 == -2
+	gen selfmh = a17		
+		label var selfmh "mental health, number bigger more health"
+tab selfmh
+
+
+//4.BMI
+	*- 1.身高
+	codebook a13
+		levelsof a13
+			drop if a13 == -3
+			drop if a13 == -2
+		gen height = a13 / 100
+	sum height
+
+	*- 2.体重
+	codebook a14
+		levelsof a14
+		drop if a14 == -3
+		drop if a14 == -2
+	drop weight
+	gen weight = a14 / 2
+	sum weight
+
+	*- 3.BMI
+	gen bmi = weight / (height^2)
+	sum bmi
+
+	*-thin
+		gen thin = 0 if bmi >= 18.5 & bmi <= 23.9
+			replace thin = 1 if bmi < 18.5
+		tab thin
+
+	*-obestiy
+		gen obesity = 0 if bmi >= 18.5 & bmi <= 23.9
+			replace obesity = 1 if bmi > 23.9
+		tab obesity
+
+
+//5.Well-being
+	codebook a36
+		drop if a36 == -3 
+		drop if a36 == -2
+	gen well_being = a36
+		label var well_being "Well_being, number bigger the more"
+tab well_being
+
+
+
+
+* ----------------------------------------
+* Part 4: Ohers
+* ----------------------------------------
+
+//1.锻炼
+	codebook a3009
+		drop if a3009 == -3 | a3009 == -1
+	gen exercise = a3009
+		recode exercise (1 = 5) (2 = 4) (3 = 3) (4 = 2) (5 = 1)
+		label var exercise "exercise, the number bigger the more"
+tab exercise
+
+
+//2.医疗保险
+	codebook a611
+		drop if a611 == - 3 | a611 == -2 | a611 == 3
+	recode a611 (2 = 0), gen(shebao)
+	label var shebao "社保项目，1=参加"
+	tab shebao
+
+	*-商业性医疗保险
+	codebook a613		
+		drop if a613 == -3 | a613 == -2 | a613 == 3
+	recode a613 (2 = 0), gen(yibao)
+	label var yibao "yibao, 1=参加"
+	tab yibao
+
+
+* ------------save new data 
+save use2013.dta, replace
+
+
+
+
+*- 毕业论文：数据清洗部分
+*- Data: CGSS2015
+//2018年12月底，各种深夜开夜车加班炼金的作品
+
+	capture clear all
+
+	capture log close
+
+	set more on
+
+cd /Users/chensiyuan/Desktop/硕士论文/论文数据
+	dir
+
+use cgss2015.dta
+	count
+
+
+
+* ----------------------------------------
+* Part 1: Treatment
+* ----------------------------------------
+
+*-marital status（single=0,live with husband/wife=1）
+	codebook a69
+	gen marriage = .
+		replace marriage = 0 if a69 == 2 | a69 ==3 | a69 == 4 //同居或已婚(有配偶)=有伴侣
+		replace marriage = 1 if a69 == 1  //未婚
+		replace marriage = 2 if a69 == 5 | a69 ==6 //分居或离婚
+		replace marriage = 3 if a69 == 7  //丧偶
+	label var marriage "marital status"
+	label define marriage 0 "0 同居或已婚" 1 "1 未婚" 2 "2 分居或离婚"  3 "3 丧偶"    
+	label values marriage marriage 
+tab marriage
+
+*-mate （有无生活伴侣,0=无伴侣）
+	gen mate = .
+		replace mate = 0 if marriage != 0
+		replace mate = 1 if marriage == 0
+tab mate
+
+
+* ----------------------------------------
+* Part 2: Covariables
+* ----------------------------------------
+
+//1.年龄
+	codebook a301
+	gen birth = a301
+	gen age = 2015 - a301
+		label var age "how old"
+sum age 
+
+
+//2.性别(female=0)
+	codebook a2
+	recode a2 (2 = 0), gen(gender)
+		label var gender "gender: female as reference."
+		label define gender 0 "0 female"  1 "1 male"
+		label values gender gender
+tab gender
+
+
+//3.户口(rural=0)
+	codebook a18
+		drop if a18 == 6 | a18 == 7 | a18 == 8
+	recode a18 (1 = 0), gen(hukou)
+		replace hukou = 1 if hukou >= 2
+	label var hukou "hukou: rural as reference."
+	label define hukou 0 "0 rural"  1 "1 not rural"
+	label values hukou hukou
+tab hukou
+
+
+//4.education( 文盲 = 0）
+	codebook a7a
+		tab a7a, m nol	
+		tab a7a
+			drop if a7a == -8 | a7a == 2 | a7a == 14
+
+	gen education = .
+		replace education = 0 if a7a == 1 	//文盲
+		replace education = 1 if a7a == 3	//小学
+		replace education = 2 if a7a == 4	//初中 
+		replace education = 3 if a7a == 5  | a7a == 6  | a7a == 7 | a7a == 8 //高中
+		replace education = 4 if a7a == 9  | a7a == 10 | a7a == 11 | a7a == 12 | a7a == 13 //高等教育
+	label var education "education level"
+	label define education 0 "0 文盲" 1 "1 小学" 2 "2 初中"  3 "3 中学"  4 "4 高等教育"     
+	label values education education education education education education
+tab education
+
+
+//5.income
+	codebook a8a
+		drop if a8a == -3
+		drop if a8a >= 9999996
+	gen income = ln(a8a + 1)
+sum income
+
+
+//6.民族 (汉族=0)
+	codebook a4
+		drop if a4 == -8
+	gen nation = . 
+		replace nation = 0 if a4 == 1
+		replace nation = 1 if a4 >= 2
+	label var nation "nation"
+	label define nation 0 "0 汉族" 1 "1 少数民族"    
+	label values nation nation
+tab nation
+
+
+//7.政治面貌 (非党员=0)
+	codebook a10
+		drop if a10 == -8 
+	gen ccp = 1 if a10 == 4
+		replace ccp = 0 if a10 != 4
+	label var ccp "ccp?"
+	label define ccp 0 "0 not ccp" 1 "1 ccp"    
+	label values ccp ccp
+tab ccp
+
+
+
+
+* ----------------------------------------
+* Part 3: Health status & Well-being
+* ----------------------------------------
+
+//1.自评健康
+	codebook a15
+		drop if a15 == -8
+	gen selfh = a15
+		label var selfh "self-rate health, number bigger more health"
+tab selfh
+
+
+//2.ADL
+	codebook a16
+		drop if a16 == -8
+	gen adl = a16	
+		label var adl "adl, number bigger more health"
+tab adl
+
+
+//3.自评精神健康
+	codebook a17
+		drop if a17 == -8
+	gen selfmh = a17		
+		label var selfmh "mental health, number bigger more health"
+tab selfmh
+
+
+//4.BMI
+	*- 1.身高
+	codebook a13
+		levelsof a13
+		gen height = a13 / 100
+	sum height
+
+	*- 2.体重
+	codebook a14
+		levelsof a14
+	drop weight
+	gen weight = a14 / 2
+	sum weight
+
+	*- 3.BMI
+	gen bmi = weight / (height^2)
+	sum bmi
+
+	*-thin
+		gen thin = 0 if bmi >= 18.5 & bmi <= 23.9
+			replace thin = 1 if bmi < 18.5
+		tab thin
+
+	*-obesityy
+		gen obesity = 0 if bmi >= 18.5 & bmi <= 23.9
+			replace obesity = 1 if bmi > 23.9
+		tab obesity
+
+
+//5.Well-being
+	codebook a36
+		drop if a36 == -8
+	gen well_being = a36
+		label var well_being "Well_being, number bigger the more"
+tab well_being
+
+
+
+
+* ----------------------------------------
+* Part 4: Ohers
+* ----------------------------------------
+
+//1.锻炼
+	codebook a3009
+		drop if a3009 == -8
+	gen exercise = a3009
+		recode exercise (1 = 5) (2 = 4) (3 = 3) (4 = 2) (5 = 1)
+		label var exercise "exercise, the number bigger the more"
+tab exercise
+
+
+//2.医疗保险
+	codebook a611
+		drop if a611 == - 8 | a611 == -1 
+	recode a611 (2 = 0), gen(shebao)
+	label var shebao "社保项目，1=参加"
+	tab shebao
+
+	*-商业性医疗保险
+	codebook a613		
+		drop if a613 == -8 | a613 == -1 
+	recode a613 (2 = 0), gen(yibao)
+	label var yibao "yibao, 1=参加"
+	tab yibao
+
+
+
+
+* ------------save new data 
+save use2015.dta, replace
+
+
+
+
+* -----------数据合并
+
+	capture clear all
+
+	capture log close
+
+	set more on
+
+cd /Users/chensiyuan/Desktop/硕士论文/论文数据
+	dir
+
+
+
+* -------keep 2013
+use use2013.dta
+	count
+
+keep marriage mate /// 
+     age birth gender hukou education nation ccp income ///
+     selfh adl selfmh well_being bmi weight height thin obesity ///
+     exercise shebao yibao
+
+save cgss2013use.dta, replace
+
+
+tab gender
+sum age
+tab hukou
+sum income
+
+
+
+* -------keep 2015
+	capture clear all
+
+use use2015.dta
+	count
+
+keep marriage mate /// 
+     age birth gender hukou education nation ccp income///
+     selfh adl selfmh well_being bmi weight height thin obesity ///
+     exercise shebao yibao
+
+save cgss2015use.dta, replace
+
+tab gender
+sum age
+tab hukou
+sum income
+
+* --------合并
+append using /Users/chensiyuan/Desktop/硕士论文/论文数据/cgss2013use.dta
+
+save ma_paper.dta, replace
+
+
+
+* -------------数据分析部分-----------------------
+ 
+  capture clear all
+
+  capture log close
+
+  set more off
+
+cd /Users/chensiyuan/Desktop/硕士论文/论文数据
+  dir
+
+use ma_paper.dta, replace
+  count
+
+
+
+//for the test of parallel lines
+
+  //findit spost13_ado
+  //net search gologit2
+  //findit gologit2
+
+* ----------------------------------------------------------
+* Descriptive data analysis
+* ----------------------------------------------------------
+
+sum selfh
+sum selfmh
+sum adl
+sum well_being
+
+tab marriage
+sum mate
+
+sum gender
+sum hukou 
+sum income
+tab education
+sum nation
+sum ccp
+
+sum yibao
+
+sum  age income///
+     selfh adl selfmh well_being bmi weight height ///
+     exercise 
+
+
+//marco
+  global x1  "gender hukou education nation ccp yibao"
+  global x2  "age income"
+
+  global x3  "selfh adl selfmh well_being bmi weight height"
+
+
+//基本统计量-表格
+
+  tabstat selfh adl selfmh bmi gender age income education well_being, by(marriage)  ///
+        s(mean sd min max N) ///
+        f(%6.3f) 
+
+  tabstat $x1 $x2 $x3, by(mate)  ///
+        s(mean sd min max N) ///
+        f(%6.3f) 
+
+correlate selfh adl selfmh bmi age income education well_being marriage
+pwcorr selfh adl selfmh bmi age income education well_being mate, star(.001)
+, star(.01), star(.001)
+help pwcorr
+
+//Correlation matrix
+  pwcorr mate $x1 $x2, sig star(.05)
+
+* ----------------------------------------------------------
+gen selfh_2 = 0 if selfh == 1 | selfh == 2
+  replace selfh_2 = 1 if selfh == 3 | selfh == 4 | selfh == 5
+sum selfh_2
+
+gen adl_2 = 0 if adl == 1 | adl == 2
+  replace adl_2 = 1 if adl == 3 | adl == 4 | adl == 5
+sum adl_2
+
+gen selfmh_2 = 0 if selfmh == 1 | selfmh == 2
+  replace selfmh_2 = 1 if selfmh == 3 | selfmh == 4 | selfmh == 5
+sum selfmh_2
+
+
+* ------描述性统计
+graph bar (mean) selfh, over(marriage)///
+  ylabel(0(0.5)5)
+
+graph bar (mean) adl, over(marriage)///
+  ylabel(0(0.5)5)
+
+graph bar (mean) selfmh, over(marriage)///
+  ylabel(0(0.5)5)
+
+graph bar bmi, over (marriage) ///
+  ylabel(0(5)30)
+
+
+
+* ------OLS Regression & GLM
+
+//自评健康-未婚、分居或离婚显著
+reg selfh i.marriage $x1 $x2,robust
+outreg2 using selfh.doc, replace ctitle(selfh)
+
+logit selfh_2 i.marriage $x1 $x2, 
+outreg2 using selfh.doc, append ctitle(selfh)
+
+ologit selfh i.marriage $x1 $x2
+brant,detail
+gologit2 selfh i.marriage $x1 $x2, autofit
+gologit2 selfh i.marriage $x1 $x2
+
+outreg2 using selfh.doc, append ctitle(selfh)
+
+reg selfh mate $x1 $x2 
+logit selfh_2 mate $x1 $x2, or
+ologit selfh mate $x1 $x2, or
+
+
+//ADL-都做得出来
+reg adl i.marriage $x1 $x2, robust
+outreg2 using adl.doc, replace ctitle(adl)
+
+logit adl_2 i.marriage $x1 $x2,or
+outreg2 using adl.doc, append ctitle(adl)
+
+ologit adl i.marriage $x1 $x2, robust
+brant
+outreg2 using adl.doc, append ctitle(adl)
+
+reg adl mate $x1 $x2 
+logit adl_2 mate $x1 $x2, or
+ologit adl mate $x1 $x2, or
+
+//精神健康-分居或离婚、丧偶显著
+reg selfmh i.marriage $x1 $x2 well_being,robust
+outreg2 using selfmh.doc, replace ctitle(selfmh)
+
+logit selfmh_2 i.marriage $x1 $x2 , or
+outreg2 using selfmh.doc, append ctitle(selfmh)
+
+ologit selfmh i.marriage $x1 $x2, robust
+brant
+outreg2 using selfmh.doc, append ctitle(selfmh)
+
+reg selfmh mate $x1 $x2 
+logit selfmh_2 mate $x1 $x2, or
+ologit selfmh mate $x1 $x2, or
+
+
+
+* ------Moderation
+
+//调节效应
+*1.性别
+gen int1 = mate * gender
+reg selfh $x1 $x2 mate int1
+reg adl $x1 $x2 mate int1
+reg selfmh $x1 $x2 mate int1
+
+*2.教育
+tab education
+  gen high_edu = 1 if education == 4
+    replace high_edu = 0 if education < 4
+gen int2 = mate * high_edu
+reg selfh $x1 $x2 mate int2
+reg adl $x1 $x2 mate int2
+reg selfmh $x1 $x2 mate int2
+
+*3.代际
+sum birth
+  gen cohort = 1 if birth <= 1948
+      replace cohort = 2 if birth >= 1949 & birth <= 1977
+      replace cohort = 3 if birth >= 1978
+gen int3 = mate * cohort
+reg selfh $x1 $x2 mate i.int3
+reg adl $x1 $x2 mate i.int3
+reg selfmh $x1 $x2 mate i.int3
+
+
+
+//.doc文件
+* int1
+reg selfh $x1 $x2 mate int1 
+outreg2 using int1.doc, replace ctitle(selfh)
+
+reg adl $x1 $x2 mate int1
+outreg2 using int1.doc, append ctitle(adl)
+
+reg selfmh $x1 $x2 mate int1 
+outreg2 using int1.doc, append ctitle(selfmh)
+
+
+* int2
+reg selfh $x1 $x2 mate i.int2
+outreg2 using int2.doc, replace ctitle(selfh)
+
+reg adl $x1 $x2 mate i.int2
+outreg2 using int2.doc, append ctitle(adl)
+
+reg selfmh $x1 $x2 mate i.int2
+outreg2 using int2.doc, append ctitle(selfmh)
+
+
+* int3
+reg selfh $x1 $x2 mate i.int3
+outreg2 using int3.doc, replace ctitle(selfh)
+
+reg adl $x1 $x2 mate i.int3
+outreg2 using int3.doc, append ctitle(adl)
+
+reg selfmh $x1 $x2 mate i.int3
+outreg2 using int3.doc, append ctitle(selfmh)
+
+
+
+////////////////////////////////////////////////////////
+
+*------------ SEM部分开始
+
+* ------------------------------------------
+* -------中介效应 
+* ------------------------------------------
+sem (well_being <- mate $x1 age)  ///
+    (income <- mate $x1 age) ///
+    (selfh <- well_being mate $x1 age income)
+
+sem (well_being <- mate $x1 age)  ///
+    (income <- mate $x1 age) ///
+    (adl <- well_being mate $x1 age income)
+
+sem (well_being <- mate $x1 age)  ///
+    (income <- mate $x1 age) ///
+    (selfmh <- well_being mate $x1 age income)
+
+
+* -----加入调节变量：
+gen inter1 = mate * gender
+gen inter2 = mate * hukou
+gen inter3 = mate * education
+
+* -----Run model:
+//1.Income:
+reg income $x1 age mate inter1
+reg income $x1 age mate inter2 //做不出
+reg income $x1 age mate inter3 //模型有问题
+    sum edu 
+      gen edu01 = 0 if education <= 2
+        replace edu01 = 1 if education > 2
+    gen inter4 = mate * edu01
+    reg income $x1 age mate inter4
+
+//2.Well_being:
+reg well_being $x1 age mate inter1
+reg well_being $x1 age mate inter2  //做不出
+reg well_being $x1 age mate inter3  //做不出
+  reg well_being $x1 age mate inter4 
+
+
+* ------------------------------------------
+* -------有调节的中介模型
+* ------------------------------------------
+//调节变量：性别
+sem (well_being <- mate $x1 age inter1)  ///
+    (income <- mate $x1 age inter1) ///
+    (selfh <- well_being mate $x1 age income)
+
+sem (well_being <- mate $x1 age inter1)  ///
+    (income <- mate $x1 age inter1) ///
+    (adl <- well_being mate $x1 age income)
+
+sem (well_being <- mate $x1 age inter1)  ///
+    (income <- mate $x1 age inter1) ///
+    (selfmh <- well_being mate $x1 age income)
+
+//调节变量：义务教育以上
+sem (well_being <- mate $x1 age inter4)  ///
+    (income <- mate $x1 age inter4) ///
+    (selfh <- well_being mate $x1 age income)
+
+sem (well_being <- mate $x1 age inter4)  ///
+    (income <- mate $x1 age inter4) ///
+    (adl <- well_being mate $x1 age income)
+
+sem (well_being <- mate $x1 age inter4)  ///
+    (income <- mate $x1 age inter4) ///
+    (selfmh <- well_being mate $x1 age income)
+
+
+// ------画图
+sembuilder
+
+*------------ SEM部分结束
+////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+* -----Prepare for PSM
+
+//匹配前，协变量在treatment上差异
+  //Bivariate test before matching
+  tab gender mate , chi2 row
+  tab ccp mate , chi2 row
+  tab hukou mate , chi2 row
+  //continuou variable test before matching
+  ttest income, by(mate)
+
+
+
+
+
+* ----------------------------------------------------------
+* Treatment: Mate
+* ----------------------------------------------------------
+
+global x4 "age hukou education income ccp weight"
+
+
+
+
+* 1.Greedy Matching：Nearest 1-1
+
+set seed 1000
+capture drop x
+generate x=uniform()
+sort x
+
+	psmatch2 mate $x4 , ///
+		out(selfh) logit ate 
+ 
+	bootstrap r(att), reps(500):    ///
+		psmatch2 mate $x1 $x2 , ///
+		out(adl) logit ate 
+
+ 	//平衡性检验
+	pstest $x4, both graph
+
+	//敏感性检验
+	drop delta
+    gen delta = .
+      	replace delta = selfh - _selfh if _treated == 1
+      	replace delta = selfh - _selfh if _treated == 0
+      		
+     rbounds delta, gamma(1 (0.5) 2)
+
+ *完整论文用的图
+      *-匹配前的密度函数图
+        twoway                                                 ///
+		  (kdensity _ps if _treat==1, lp(solid) lw(*1.5))      ///
+          (kdensity _ps if _treat==0, lp(dash) lw(*1.5)),      ///
+		  title("Before Matching")                             ///
+          ytitle("Density") ylabel(,angle(0))                  ///
+          xtitle("Propensity Score") xscale(titlegap(2))       ///
+          xlabel(0(0.2)1, format(%2.1f))                       ///
+          legend(label(1 "Treat") label(2 "Control") row(2)    ///
+                 position(1) ring(0))                          ///
+          scheme(s1mono)   // 彩色图片 scheme(s2color) 
+		 
+	  *-匹配后的密度函数图		 
+	    twoway                                                   ///
+		  (kdensity _ps if _treat==1,lp(solid) lw(*1.5))         ///
+          (kdensity _ps if _treat==0&_wei!=.,lp(dash) lw(*1.5)), ///
+	      title("After Matching") ///
+          ytitle("Density") ylabel(,angle(0))                    ///
+          xtitle("Propensity Score") xscale(titlegap(2))         ///
+          xlabel(0(0.2)1, format(%2.1f))                         ///
+          legend(label(1 "Treat") label(2 "Control") row(2)      ///
+                 position(1) ring(0))                            ///
+          scheme(s1mono)
+    *
